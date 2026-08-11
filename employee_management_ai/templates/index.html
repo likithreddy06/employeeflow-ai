@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>EmployeeFlow AI</title><link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}"></head>
+<body>
+<main>
+  <section class="hero"><div><p class="eyebrow">Employee operations assistant</p><h1>EmployeeFlow <span>AI</span></h1><p>Turn employee messages into clear, trackable HR actions.</p></div><div class="status">● Agent ready</div></section>
+  <section class="layout">
+    <form id="request-form" class="panel"><h2>New employee request</h2><label>Employee name<input id="employee_name" placeholder="e.g. Priya Shah" required></label><label>Department<input id="department" placeholder="e.g. Product"></label><label>What does the employee need?<textarea id="request" rows="6" placeholder="Describe the request in everyday language..." required></textarea></label><button>Analyse & save request <span>→</span></button><p id="error" role="alert"></p></form>
+    <section class="panel result"><div class="result-title"><h2>Agent recommendation</h2><span id="empty">Waiting for a request</span></div><div id="result-content" class="empty-state">Your routing, priority, and next action will appear here.</div></section>
+  </section>
+  <section class="records"><div class="section-title"><div><p class="eyebrow">Saved in SQLite</p><h2>Request history</h2></div><span id="count"></span></div><div class="table-wrap"><table><thead><tr><th>Employee</th><th>Category</th><th>Priority</th><th>Owner</th><th>Created</th></tr></thead><tbody id="records"><tr><td colspan="5" class="loading">Loading requests…</td></tr></tbody></table></div></section>
+</main>
+<script>
+const form=document.getElementById('request-form'), records=document.getElementById('records');
+const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+function row(r){return `<tr><td><strong>${escape(r.employee_name)}</strong><small>${escape(r.department||'No department')}</small></td><td><span class="tag">${escape(r.category)}</span></td><td><span class="priority ${r.priority==='High'?'high':''}">${escape(r.priority)}</span></td><td>${escape(r.owner)}</td><td>${escape(r.created_at)}</td></tr>`}
+async function load(){const data=await fetch('/api/requests').then(r=>r.json());document.getElementById('count').textContent=`${data.length} saved request${data.length===1?'':'s'}`;records.innerHTML=data.length?data.map(row).join(''):'<tr><td colspan="5" class="loading">No requests yet.</td></tr>'}
+form.addEventListener('submit',async e=>{e.preventDefault();const error=document.getElementById('error'); error.textContent=''; const payload={employee_name:employee_name.value,department:department.value,request:request.value};const response=await fetch('/api/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const data=await response.json();if(!response.ok){error.textContent=data.error;return}document.getElementById('empty').style.display='none';document.getElementById('result-content').className='';document.getElementById('result-content').innerHTML=`<div class="scoreline"><span class="tag">${escape(data.category)}</span><span class="priority ${data.priority==='High'?'high':''}">${escape(data.priority)} priority</span></div><dl><div><dt>Route to</dt><dd>${escape(data.owner)}</dd></div><div><dt>Dates found</dt><dd>${escape(data.dates)}</dd></div><div class="wide"><dt>Recommended next action</dt><dd>${escape(data.action)}</dd></div><div class="wide"><dt>Why the agent chose this</dt><dd>${escape(data.reasoning)}</dd></div></dl>`;form.reset();load()}); load();
+</script></body></html>
